@@ -529,7 +529,21 @@ textarea.minput{resize:vertical;min-height:80px;margin-bottom:0}
   </div>
 </div>
 
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
+// Init Firebase
+firebase.initializeApp({
+  apiKey: "AIzaSyATZMIidR1kt_Wp78RrezwMjJdWq2XfAds",
+  authDomain: "gribouille-9f6c1.firebaseapp.com",
+  projectId: "gribouille-9f6c1",
+  storageBucket: "gribouille-9f6c1.firebasestorage.app",
+  messagingSenderId: "25419182581",
+  appId: "1:25419182581:web:8ed50ad235d44d6642b0bc"
+});
+const db = firebase.firestore();
+
 const MN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const TM={
   rdv:{e:'📅',bg:'#eee8f8',c:'#5a3a8a'},
@@ -537,25 +551,25 @@ const TM={
   repas:{e:'🥕',bg:'#e4ede4',c:'#3a6b3e'}
 };
 
-let weekStart=null; // Monday of current week
-let sD=null; // selected day index (0=Mon..6=Sun)
+let weekStart=null;
+let sD=null;
 let sT=null;
 let ent='';
 
-const PIN = '0403';
+const PIN='0403';
 const fmtKey=(dt)=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 
 async function getDayData(key){
   try{
-    const snap = await getDoc(doc(db,'gribouille',key));
-    return snap.exists() ? snap.data() : {};
+    const snap=await db.collection('gribouille').doc(key).get();
+    return snap.exists ? snap.data() : {};
   }catch(e){return {};}
 }
 async function setDayData(key,data){
-  try{ await setDoc(doc(db,'gribouille',key), data); }catch(e){console.error(e);}
+  try{ await db.collection('gribouille').doc(key).set(data); }catch(e){console.error(e);}
 }
 async function delDayData(key){
-  try{ await deleteDoc(doc(db,'gribouille',key)); }catch(e){console.error(e);}
+  try{ await db.collection('gribouille').doc(key).delete(); }catch(e){console.error(e);}
 }
 
 function getMonday(d){
@@ -601,12 +615,10 @@ function goToday(){weekStart=getMonday(new Date());sD=null;rCal()}
 
 async function rCal(){
   const now=new Date();now.setHours(0,0,0,0);
-
   const sunDate=new Date(weekStart);sunDate.setDate(sunDate.getDate()+6);
   const m1=MN[weekStart.getMonth()];
   const m2=MN[sunDate.getMonth()];
   document.getElementById('mlbl').textContent=m1===m2?m1:m1+' – '+m2;
-
   const fmt=d=>`${d.getDate()} ${MN[d.getMonth()].substring(0,3)}.`;
   document.getElementById('wrange').textContent=fmt(weekStart)+' → '+fmt(sunDate)+' '+sunDate.getFullYear();
 
@@ -614,14 +626,11 @@ async function rCal(){
     const dt=new Date(weekStart);dt.setDate(dt.getDate()+i);
     const isToday=dt.getTime()===now.getTime();
     const isSel=sD===i;
-
     const wh=document.getElementById('wh'+i);
     wh.className='wh-day'+(isToday?' is-today':'');
     document.getElementById('wdn'+i).textContent=dt.getDate();
-
     const col=document.getElementById('dc'+i);
     col.className='day-col'+(isToday?' is-today':'')+(isSel?' is-sel':'');
-
     const k=fmtKey(dt);
     const dd=await getDayData(k);
     let html='';
@@ -631,10 +640,7 @@ async function rCal(){
         const bg=m?m.bg:'#f5ede0';
         const c2=m?m.c:'#6a5448';
         const emoji=m?m.e:'🐾';
-        html+=`<div class="evt-pill" style="background:${bg};color:${c2}">
-          <span class="evt-emoji">${emoji}</span>
-          <span>${ev.title||''}</span>
-        </div>`;
+        html+=`<div class="evt-pill" style="background:${bg};color:${c2}"><span class="evt-emoji">${emoji}</span><span>${ev.title||''}</span></div>`;
       });
     }
     col.innerHTML=html;
@@ -671,13 +677,12 @@ function renderBubbles(events){
       <div style="flex:1;background:${bg};color:${col};border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.4;word-break:break-word">
         <span style="margin-right:5px">${emoji}</span>${ev.title||''}
       </div>
-      <button onclick="rmEvt(${idx})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--parchment3);background:#e8c8cc;color:var(--muted);cursor:pointer;font-size:13px;flex-shrink:0;margin-top:6px;transition:all .1s" onmouseover="this.style.background='#fce8ec';this.style.color='#c44'" onmouseout="this.style.background='var(--parchment)';this.style.color='var(--muted)'">✕</button>
+      <button onclick="rmEvt(${idx})" style="width:28px;height:28px;border-radius:8px;border:1px solid #e8d9c4;background:#faf7f2;color:#9a8070;cursor:pointer;font-size:13px;flex-shrink:0;margin-top:6px;">✕</button>
     </div>`;
   });
 }
 
 function sTag(t){
-  // toggle: click again to deselect
   sT=(sT===t)?null:t;
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.t===sT));
 }
@@ -721,14 +726,8 @@ async function delDay(){
 }
 
 function cModal(){document.getElementById('vEvt').style.display='none';sD=null;rCal()}
-function prevW(){weekStart.setDate(weekStart.getDate()-7);sD=null;document.getElementById('vEvt').style.display='none';sD=null;rCal()}
-function nextW(){weekStart.setDate(weekStart.getDate()+7);sD=null;document.getElementById('vEvt').style.display='none';sD=null;rCal()}
-
-// Expose functions to global scope for onclick handlers
-window.kp=kp;window.kpD=kpD;window.kpGo=kpGo;
-window.prevW=prevW;window.nextW=nextW;window.goToday=goToday;window.doOut=doOut;
-window.oDay=oDay;window.sTag=sTag;window.addBubble=addBubble;
-window.rmEvt=rmEvt;window.delDay=delDay;window.cModal=cModal;
+function prevW(){weekStart.setDate(weekStart.getDate()-7);sD=null;document.getElementById('vEvt').style.display='none';rCal()}
+function nextW(){weekStart.setDate(weekStart.getDate()+7);sD=null;document.getElementById('vEvt').style.display='none';rCal()}
 
 document.addEventListener('keydown',e=>{
   if(document.getElementById('vLogin').style.display!=='none'){
